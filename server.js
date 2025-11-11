@@ -2,12 +2,16 @@
 // PatentProfiler IP Data Backend
 // ------------------------------
 
-// Install dependencies once: npm install express node-fetch
 import express from "express";
 import fetch from "node-fetch";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Simple root route so you don't see "Cannot GET /"
+app.get("/", (req, res) => {
+  res.send("✅ PatentProfiler API is running. Use /api/ipdata?assignee=YourCompanyName");
+});
 
 async function safeFetch(url) {
   try {
@@ -25,7 +29,6 @@ app.get("/api/ipdata", async (req, res) => {
   if (!assignee) return res.status(400).json({ error: "Missing ?assignee=" });
 
   const encoded = encodeURIComponent(assignee);
-
   const patentsViewURL = `https://api.patentsview.org/patents/query?q={"assignee_organization":"${encoded}"}&f=["patent_number"]`;
   const ibdURL = `https://developer.uspto.gov/ibd-api/v1/application?searchText=applicant:${encoded}`;
   const trademarkURL = `https://developer.uspto.gov/trademark/v1/trademark/search?searchText=owner:${encoded}`;
@@ -40,7 +43,6 @@ app.get("/api/ipdata", async (req, res) => {
   const pendingApps = ibdData?.results?.length || 0;
   const provisionals = (ibdData?.results || []).filter(r => /provisional/i.test(JSON.stringify(r))).length;
   const trademarks = tmData?.response?.docs?.length || 0;
-
   const pctApps = (ibdData?.results || []).filter(r => /"WO|WO\/|WO\d{2}/i.test(JSON.stringify(r))).length;
   const foreignNational = (ibdData?.results || []).filter(r => /NATIONAL|COUNTRY|DESIGNATED/i.test(JSON.stringify(r))).length;
 
@@ -60,8 +62,9 @@ app.get("/api/ipdata", async (req, res) => {
     }
   };
 
-  res.setHeader("Access-Control-Allow-Origin", "*"); // so Framer can call this
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.json(result);
 });
 
 app.listen(PORT, () => console.log(`✅ PatentProfiler API running on port ${PORT}`));
+
